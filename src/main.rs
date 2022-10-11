@@ -2,10 +2,11 @@ use check::{run, Config};
 use clap::{arg, Command};
 use std::process;
 mod arguments;
+mod constants;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(arguments::NAME)
+        .about(format!("{}/n{}", constants::BANNER, arguments::NAME))
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)
