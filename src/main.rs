@@ -1,12 +1,15 @@
+#![allow(dead_code)]
 use check::{run, Config};
 use clap::{arg, Command};
 use std::process;
 mod arguments;
 mod constants;
+use arguments::NAME;
+use constants::BANNER;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(format!("{}/n{}", constants::BANNER, arguments::NAME))
+        .about(format!("{}/n{}", BANNER, NAME))
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)

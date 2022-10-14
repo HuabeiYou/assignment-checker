@@ -3,11 +3,16 @@ name = "check"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-gcc-ar"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 mac_address = "1.1.4"
 urlencoding = "2.1.2"
+spinners = "4.1.0"
 reqwest = { version = "0.11", features = ["json", "multipart"] }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4.0.10" }
+serde = { version = "1.0", features = ["derive"] }
