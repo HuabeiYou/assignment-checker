@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use check::{run, Config};
 use clap::{arg, Command};
 use std::process;
@@ -43,8 +42,8 @@ fn main() {
             process::exit(1);
         }
     };
-    if let Err(e) = run(config) {
-        eprintln!("{e}");
+    if let Err(_) = run(config) {
+        eprintln!("Something wrong happened, oops!");
         process::exit(1);
     }
 }

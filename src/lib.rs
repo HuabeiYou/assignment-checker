@@ -1,20 +1,19 @@
+#![allow(non_snake_case)]
 mod arguments;
 mod constants;
 use arguments::LESSON;
 use constants::AUTH_ENDPOINT;
 use mac_address;
 use reqwest::multipart;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use spinners::{Spinner, Spinners};
 use std::{collections::HashMap, error, fs, io, path::PathBuf};
 
 pub fn run(config: Config) -> Result<(), Box<dyn error::Error>> {
     validate_files(&config.paths)?;
     let auth_resp = authenticate(&config)?;
-    if let Some(message) = auth_resp.get("message") {
-        println!("{}", message)
-    };
-    if !auth_resp.contains_key("RunnerLocation") {
+    println!("{}", auth_resp.message());
+    if auth_resp.failed() {
         return Ok(());
     };
     let mut sp = Spinner::new(Spinners::Dots12, "Validating test files...".into());
@@ -25,12 +24,11 @@ pub fn run(config: Config) -> Result<(), Box<dyn error::Error>> {
         .collect::<Vec<UploadJob>>();
     let uploaded_files = upload(jobs).expect("Please check your internet connection.");
     sp.stop_with_message("Validation success.".into());
-    let runner_location = auth_resp.get("RunnerLocation").unwrap();
     let mut sp = Spinner::new(
         Spinners::Dots12,
-        "Running the test... This may take a while, thank you for your patience.".into(),
+        "Running the test, please wait... This may take a while, thank you for your patience!".into(),
     );
-    let test_result = run_test(runner_location, uploaded_files)?;
+    let test_result = run_test(&auth_resp, uploaded_files)?;
     println!("{}", test_result);
     sp.stop_with_message("Test finished".into());
     Ok(())
@@ -61,7 +59,7 @@ async fn upload(jobs: Vec<UploadJob>) -> Result<Vec<HashMap<String, String>>, re
 }
 
 #[tokio::main]
-async fn authenticate(config: &Config) -> Result<HashMap<String, String>, reqwest::Error> {
+async fn authenticate(config: &Config) -> Result<AuthResp, reqwest::Error> {
     let mac = match mac_address::get_mac_address() {
         Ok(option) => match option {
             Some(value) => value.to_string(),
@@ -78,7 +76,7 @@ async fn authenticate(config: &Config) -> Result<HashMap<String, String>, reqwes
     let url = format!("{}?{}", AUTH_ENDPOINT, query_string);
     let client = reqwest::Client::new();
     let resp = client.get(url.to_string()).send().await?;
-    let data = resp.json::<HashMap<String, String>>().await?;
+    let data = resp.json::<AuthResp>().await?;
     Ok(data)
 }
 
@@ -111,20 +109,17 @@ struct UploadJob {
     data: Vec<u8>,
 }
 impl UploadJob {
-    fn build(
-        params: &HashMap<String, String>,
-        path: PathBuf,
-    ) -> Result<Self, Box<dyn error::Error>> {
+    fn build(params: &AuthResp, path: PathBuf) -> Result<Self, Box<dyn error::Error>> {
         let file_name = String::from(path.file_name().unwrap().to_str().unwrap());
-        let key = format!("{}/{}", params.get("Dir").unwrap(), file_name);
+        let key = format!("{}/{}", params.dir(), file_name);
         let data = fs::read(path).unwrap();
         Ok(Self {
             key,
-            bucket: params.get("Bucket").unwrap().into(),
-            destination: String::from("https://savvyuni-materials.oss-accelerate.aliyuncs.com"),
-            oss_access_key: params.get("OSSAccessKeyId").unwrap().to_string(),
-            policy: params.get("Policy").unwrap().to_string(),
-            signature: params.get("Signature").unwrap().to_string(),
+            bucket: params.bucket().into(),
+            destination: format!("https://{}.oss-accelerate.aliyuncs.com", params.bucket()),
+            oss_access_key: params.oss_access_key_id().into(),
+            policy: params.policy().into(),
+            signature: params.signature().into(),
             file_name,
             data,
         })
@@ -155,23 +150,85 @@ impl Config {
     }
 }
 
-#[derive(Debug, Serialize)]
-struct RequestBody {
-    lesson: String,
-    files: Vec<HashMap<String, String>>,
-}
-
 #[tokio::main]
 async fn run_test(
-    server: &String,
+    params: &AuthResp,
     files: Vec<HashMap<String, String>>,
 ) -> Result<String, reqwest::Error> {
     let body = RequestBody {
         lesson: String::from(LESSON),
         files,
+        test_entry: params.test_entry().into(),
+        test_env: params.test_env().clone().to_vec(),
     };
     let client = reqwest::Client::new();
-    let resp = client.post(server).json(&body).send().await?;
+    let resp = client
+        .post(params.runner_location())
+        .json(&body)
+        .send()
+        .await?;
     let data = resp.text().await?;
     Ok(data)
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+struct FileDescription {
+    key: String,
+    bucket: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct AuthResp {
+    message: Option<String>,
+    Bucket: Option<String>,
+    Dir: Option<String>,
+    OSSAccessKeyId: Option<String>,
+    Policy: Option<String>,
+    Signature: Option<String>,
+    RunnerLocation: Option<String>,
+    TestEntry: Option<String>,
+    TestEnv: Option<Vec<FileDescription>>,
+}
+impl AuthResp {
+    fn failed(&self) -> bool {
+        if let Some(_) = &self.Signature {
+            return false;
+        };
+        true
+    }
+    fn message(&self) -> &String {
+        self.message.as_ref().unwrap()
+    }
+    fn bucket(&self) -> &String {
+        self.Bucket.as_ref().unwrap()
+    }
+    fn dir(&self) -> &String {
+        self.Dir.as_ref().unwrap()
+    }
+    fn oss_access_key_id(&self) -> &String {
+        self.OSSAccessKeyId.as_ref().unwrap()
+    }
+    fn policy(&self) -> &String {
+        self.Policy.as_ref().unwrap()
+    }
+    fn signature(&self) -> &String {
+        self.Signature.as_ref().unwrap()
+    }
+    fn runner_location(&self) -> &String {
+        self.RunnerLocation.as_ref().unwrap()
+    }
+    fn test_entry(&self) -> &String {
+        self.TestEntry.as_ref().unwrap()
+    }
+    fn test_env(&self) -> &Vec<FileDescription> {
+        self.TestEnv.as_ref().unwrap()
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct RequestBody {
+    lesson: String,
+    files: Vec<HashMap<String, String>>,
+    test_entry: String,
+    test_env: Vec<FileDescription>,
 }
