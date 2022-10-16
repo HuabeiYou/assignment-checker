@@ -8,7 +8,7 @@ use constants::BANNER;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(format!("{}/n{}", BANNER, NAME))
+        .about(format!("{}{}", BANNER, NAME))
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)
