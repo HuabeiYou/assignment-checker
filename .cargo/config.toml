@@ -1,6 +1,10 @@
 # On Windows MSVC, statically link the C runtime so that the resulting EXE does
 # not depend on the vcruntime DLL.
 [target.x86_64-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
-[target.i686-pc-windows-msvc]
-rustflags = ["-C", "target-feature=+crt-static"]
+rustflags = [
+  "-C",
+  "target-feature=+crt-static",
+  "-Lnative=/opt/xwin/crt/lib/x86_64",
+  "-Lnative=/opt/xwin/sdk/lib/um/x86_64",
+  "-Lnative=/opt/xwin/sdk/lib/ucrt/x86_64",
+]
