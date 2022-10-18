@@ -1,6 +1,9 @@
-# On Windows MSVC, statically link the C runtime so that the resulting EXE does
-# not depend on the vcruntime DLL.
+# Linux to Win/Mac cross compilation config
+
+# Ref: https://bevy-cheatbook.github.io/setup/cross/linux-windows.html
+# On Windows MSVC, statically link the C runtime so that the resulting EXE does not depend on the vcruntime DLL
 [target.x86_64-pc-windows-msvc]
+linker = "rust-lld"
 rustflags = [
   "-C",
   "target-feature=+crt-static",
@@ -8,3 +11,9 @@ rustflags = [
   "-Lnative=/opt/xwin/sdk/lib/um/x86_64",
   "-Lnative=/opt/xwin/sdk/lib/ucrt/x86_64",
 ]
+
+# Ref: https://wapl.es/rust/2019/02/17/rust-cross-compile-linux-to-macos.html
+# Convoluted setup process that can get even worse if you don't have access to a Macbook
+[target.x86_64-apple-darwin]
+linker = "x86_64-apple-darwin21.4-clang"
+ar = "x86_64-apple-darwin21.4-ar"
