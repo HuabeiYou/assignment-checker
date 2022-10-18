@@ -1,14 +1,11 @@
-use check::{run, Config};
+use check::{run, send_analytic, Config};
 use clap::{arg, Command};
 use std::process;
-mod arguments;
 mod constants;
-use arguments::NAME;
-use constants::BANNER;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(format!("{}{}", BANNER, NAME))
+        .about(format!("{}", constants::BANNER))
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)
@@ -18,7 +15,12 @@ fn cli() -> Command {
                 .required(true),
         )
         .arg(
-            arg!(-p --phone <PHONE> "Registered phone number")
+            arg!(-p --phone <PHONE> "Registered phone number.")
+                .num_args(1)
+                .required(true),
+        )
+        .arg(
+            arg!(-id --test_id <TEST_ID> "Test set id, you can get it from the instructor.")
                 .num_args(1)
                 .required(true),
         )
@@ -29,21 +31,31 @@ fn main() {
     let phone = matches
         .get_one::<String>("phone")
         .expect("phone is required.");
+    let test_set = matches
+        .get_one::<String>("test_id")
+        .expect("test id is required.");
     let files = matches
         .get_many::<String>("FILES")
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
 
-    let config = match Config::build(arguments::LESSON, phone, files) {
+    let config = match Config::build(test_set, phone, files) {
         Ok(value) => value,
         Err(e) => {
             eprintln!("{e}");
             process::exit(1);
         }
     };
-    if let Err(_) = run(config) {
-        eprintln!("Something wrong happened, oops!");
+    let result = match run(config) {
+        Ok(value) => value,
+        Err(e) => {
+            eprintln!("{e}");
+            process::exit(1);
+        }
+    };
+    if let Err(_) = send_analytic(result) {
+        // do nothing
         process::exit(1);
-    }
+    };
 }
