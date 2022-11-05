@@ -10,7 +10,6 @@ use spinners::{Spinner, Spinners};
 use std::{error, io, path::PathBuf};
 
 pub fn run(config: Config) -> Result<AnalyticBody, Box<dyn error::Error>> {
-    validate_files(&config.paths)?;
     let auth_resp = authenticate(&config)?;
     if auth_resp.failed() {
         return Err(Box::new(AuthError::new(auth_resp.message().into())));
@@ -19,7 +18,7 @@ pub fn run(config: Config) -> Result<AnalyticBody, Box<dyn error::Error>> {
     let jobs = config
         .paths
         .into_iter()
-        .map(|x| UploadJob::build(&auth_resp, x).unwrap())
+        .map(|x| UploadJob::new(&auth_resp, x))
         .collect::<Vec<UploadJob>>();
     let uploaded_files = upload(jobs).expect("Please check your internet connection.");
     sp.stop_with_message("Validation success.".into());
@@ -29,7 +28,6 @@ pub fn run(config: Config) -> Result<AnalyticBody, Box<dyn error::Error>> {
             .into(),
     );
     let result = run_test(&auth_resp, &uploaded_files)?;
-    println!("{}", result);
     sp.stop_with_message("Test finished".into());
     let body = AnalyticBody {
         files: uploaded_files,
@@ -39,38 +37,39 @@ pub fn run(config: Config) -> Result<AnalyticBody, Box<dyn error::Error>> {
     Ok(body)
 }
 
-pub struct Config {
-    pub test_set_id: String,
-    pub phone: String,
+pub struct Config<'a> {
+    pub test_set_id: &'a str,
+    pub phone: &'a str,
     pub paths: Vec<PathBuf>,
 }
 
-impl Config {
+impl<'a> Config<'a> {
     pub fn build(
-        test_set_id: &String,
-        phone: &String,
-        files: Vec<&String>,
+        test_set_id: &'a str,
+        phone: &'a str,
+        files: Vec<&str>,
     ) -> Result<Self, io::Error> {
-        let paths_clone = files
+        let paths = files
             .into_iter()
             .map(|x| -> PathBuf {
                 let dir: PathBuf = std::env::current_dir().unwrap();
                 dir.join(x)
             })
             .collect::<Vec<PathBuf>>();
+        validate_files(&paths)?;
         Ok(Self {
-            test_set_id: test_set_id.into(),
-            phone: phone.into(),
-            paths: paths_clone,
+            test_set_id,
+            phone,
+            paths,
         })
     }
 }
 
 #[derive(Debug, Serialize)]
-struct TestRequestBody {
+struct TestRequestBody<'a> {
     files: Vec<FileDescription>,
     test_env: Vec<FileDescription>,
-    test_entry: String,
+    test_entry: &'a str,
 }
 
 #[tokio::main]
@@ -80,7 +79,7 @@ async fn run_test(
 ) -> Result<String, reqwest::Error> {
     let body = TestRequestBody {
         files: files.clone().to_vec(),
-        test_entry: params.test_entry().into(),
+        test_entry: params.test_entry(),
         test_env: params.test_env().clone().to_vec(),
     };
     let client = reqwest::Client::new();
@@ -97,7 +96,7 @@ async fn run_test(
 pub struct AnalyticBody {
     files: Vec<FileDescription>,
     submission_id: String,
-    result: String,
+    pub result: String,
 }
 
 #[tokio::main]

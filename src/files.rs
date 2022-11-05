@@ -21,11 +21,16 @@ pub struct UploadJob {
     data: Vec<u8>,
 }
 impl UploadJob {
-    pub fn build(params: &AuthResp, path: PathBuf) -> Result<Self, Box<dyn error::Error>> {
-        let file_name = String::from(path.file_name().unwrap().to_str().unwrap());
+    pub fn new(params: &AuthResp, path: PathBuf) -> Self {
+        let file_name = String::from(
+            path.file_name()
+                .expect("File path should exist")
+                .to_str()
+                .expect("File name should be valid unicode"),
+        );
         let key = format!("{}/{}", params.dir(), file_name);
         let data = fs::read(path).unwrap();
-        Ok(Self {
+        Self {
             key,
             bucket: params.bucket().into(),
             destination: format!("https://{}.oss-accelerate.aliyuncs.com", params.bucket()),
@@ -34,7 +39,7 @@ impl UploadJob {
             signature: params.signature().into(),
             file_name,
             data,
-        })
+        }
     }
 }
 

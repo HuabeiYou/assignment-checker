@@ -5,7 +5,7 @@ mod constants;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(format!("{}", constants::BANNER))
+        .about(constants::BANNER)
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)
@@ -29,15 +29,15 @@ fn cli() -> Command {
 fn main() {
     let matches = cli().get_matches();
     let phone = matches
-        .get_one::<String>("phone")
+        .get_one::<&str>("phone")
         .expect("phone is required.");
     let test_set = matches
-        .get_one::<String>("test_id")
+        .get_one::<&str>("test_id")
         .expect("test id is required.");
     let files = matches
-        .get_many::<String>("FILES")
-        .into_iter()
-        .flatten()
+        .get_many::<&str>("FILES")
+        .expect("At least one file is required.")
+        .copied()
         .collect::<Vec<_>>();
 
     let config = match Config::build(test_set, phone, files) {
@@ -47,14 +47,15 @@ fn main() {
             process::exit(1);
         }
     };
-    let result = match run(config) {
+    let data = match run(config) {
         Ok(value) => value,
         Err(e) => {
             eprintln!("{e}");
             process::exit(1);
         }
     };
-    if let Err(_) = send_analytic(result) {
+    println!("{}", data.result);
+    if let Err(_) = send_analytic(data) {
         // do nothing
         process::exit(1);
     };
