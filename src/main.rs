@@ -55,7 +55,7 @@ fn main() {
         }
     };
     println!("{}", data.result);
-    if let Err(_) = send_analytic(data) {
+    if send_analytic(data).is_err() {
         // do nothing
         process::exit(1);
     };

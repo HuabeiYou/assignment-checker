@@ -73,12 +73,9 @@ struct TestRequestBody<'a> {
 }
 
 #[tokio::main]
-async fn run_test(
-    params: &AuthResp,
-    files: &Vec<FileDescription>,
-) -> Result<String, reqwest::Error> {
+async fn run_test(params: &AuthResp, files: &[FileDescription]) -> Result<String, reqwest::Error> {
     let body = TestRequestBody {
-        files: files.clone().to_vec(),
+        files: files.to_owned().to_vec(),
         test_entry: params.test_entry(),
         test_env: params.test_env().clone().to_vec(),
     };

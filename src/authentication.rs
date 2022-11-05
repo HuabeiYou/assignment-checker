@@ -2,7 +2,6 @@
 use crate::constants;
 use crate::files::FileDescription;
 use crate::Config;
-use mac_address;
 use serde::{Deserialize, Serialize};
 use std::{
     error, fmt,
@@ -24,7 +23,7 @@ pub struct AuthResp {
 }
 impl AuthResp {
     pub fn failed(&self) -> bool {
-        if let Some(_) = &self.SubmissionId {
+        if self.SubmissionId.is_some() {
             return false;
         };
         true
