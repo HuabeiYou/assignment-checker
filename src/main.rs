@@ -5,7 +5,7 @@ mod constants;
 
 fn cli() -> Command {
     Command::new("check")
-        .about(format!("{}", constants::BANNER))
+        .about(constants::BANNER)
         .subcommand_required(false)
         .allow_external_subcommands(false)
         .arg_required_else_help(true)
@@ -54,7 +54,7 @@ fn main() {
             process::exit(1);
         }
     };
-    if let Err(_) = send_analytic(result) {
+    if send_analytic(result).is_err() {
         // do nothing
         process::exit(1);
     };

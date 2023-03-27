@@ -2,7 +2,6 @@
 use crate::constants;
 use crate::files::FileDescription;
 use crate::Config;
-use mac_address;
 use serde::{Deserialize, Serialize};
 use std::{
     error, fmt,
@@ -24,7 +23,7 @@ pub struct AuthResp {
 }
 impl AuthResp {
     pub fn failed(&self) -> bool {
-        if let Some(_) = &self.SubmissionId {
+        if self.SubmissionId.is_some() {
             return false;
         };
         true
@@ -79,22 +78,25 @@ impl error::Error for AuthError {}
 
 #[tokio::main]
 pub async fn authenticate(config: &Config) -> Result<AuthResp, reqwest::Error> {
-    let mac = match mac_address::get_mac_address() {
+    let mut mac = match mac_address::get_mac_address() {
         Ok(option) => match option {
             Some(value) => value.to_string(),
             None => String::from("unknown"),
         },
         Err(_) => String::from("unknown"),
     };
-    let query_string = format!(
-        "setId={}&phone={}&mac={}",
-        &config.test_set_id,
-        &config.phone,
-        urlencoding::encode(&mac)
-    );
-    let url = format!("{}?{}", constants::AUTH_ENDPOINT, query_string);
+    mac = urlencoding::encode(mac.as_str()).to_string();
+    let params = [
+        ("setId", &config.test_set_id),
+        ("phone", &config.phone),
+        ("mac", &mac),
+    ];
     let client = reqwest::Client::new();
-    let resp = client.get(url.to_string()).send().await?;
+    let resp = client
+        .get(constants::AUTH_ENDPOINT)
+        .query(&params)
+        .send()
+        .await?;
     let auth_resp = resp.json::<AuthResp>().await?;
     Ok(auth_resp)
 }
