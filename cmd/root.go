@@ -66,6 +66,11 @@ var rootCmd = &cobra.Command{
 			files = append(files, *updatedFile)
 		}
 
+		if len(files) == 0 {
+			spinner.StopMessage("No files available, program exists without running tests.")
+			_ = spinner.Stop()
+		}
+
 		spinner.Message("judging...")
 		testBody := stages.RunBody{
 			TestEntry: instruction.TestEntry,
