@@ -1,3 +1,4 @@
 /target
 /.xwin-cache
 .DS_Store
+*.exe
