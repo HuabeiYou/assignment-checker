@@ -77,7 +77,7 @@ var rootCmd = &cobra.Command{
 			TestEnv:   instruction.TestEnv,
 			Files:     files,
 		}
-		testResult, err := stages.RunTest(instruction.RunnerLocation, &testBody)
+		testResult, err := stages.RunTest(instruction.RunnerLocation, &testBody, spinner)
 		result := testResult
 		if err != nil {
 			result += err.Error()

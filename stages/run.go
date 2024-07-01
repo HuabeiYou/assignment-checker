@@ -8,6 +8,8 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/theckman/yacspin"
 )
 
 type OSSFile struct {
@@ -21,7 +23,7 @@ type RunBody struct {
 	Files     []OSSFile `json:"files"`
 }
 
-func RunTest(runnerLocation string, requestBody *RunBody) (string, error) {
+func RunTest(runnerLocation string, requestBody *RunBody, spinner *yacspin.Spinner) (string, error) {
 	content, _ := json.Marshal(requestBody)
 	resp, err := http.Post(runnerLocation, "application/json", bytes.NewReader(content))
 	if err != nil {
@@ -31,6 +33,7 @@ func RunTest(runnerLocation string, requestBody *RunBody) (string, error) {
 
 	var contentBuilder strings.Builder
 	reader := bufio.NewReader(resp.Body)
+	_ = spinner.Pause()
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
@@ -42,7 +45,7 @@ func RunTest(runnerLocation string, requestBody *RunBody) (string, error) {
 			break
 		}
 		contentBuilder.WriteString(line)
-		fmt.Println(line)
+		fmt.Print(line)
 	}
 	return contentBuilder.String(), nil
 }
